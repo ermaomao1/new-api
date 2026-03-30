@@ -28,17 +28,23 @@ jobs:
           cd web
           bun install
           bun run build
+          echo "Frontend built successfully"
+          ls -la dist/ | head -5
 
       - name: Build Go binary
         run: |
-          CGO_ENABLED=0 go build -ldflags '-s -w' -o new-api-fixed .
+          echo "Starting Go build..."
+          echo "web/dist exists: $(test -d web/dist && echo yes || echo no)"
+          CGO_ENABLED=0 go build -ldflags '-s -w' -o new-api-fixed . 2>&1
+          echo "Go build exit code: $?"
 
       - name: Package binary and dockerfile
+        if: success()
         run: |
-          cp Dockerfile Dockerfile.simple
-          tar -czvf new-api-package.tar.gz new-api-fixed Dockerfile.simple web/dist
+          tar -czvf new-api-package.tar.gz new-api-fixed Dockerfile
 
       - name: Upload artifact
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: new-api-package
