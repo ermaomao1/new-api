@@ -6,7 +6,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 35
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -31,28 +31,23 @@ jobs:
           bun run build
 
       - name: Download Go modules
-        run: |
-          go mod download
-          echo "Modules downloaded"
+        run: go mod download
 
       - name: Build Go binary
         run: |
-          echo "=== Build Info ==="
-          pwd
-          ls -la web/dist/ | head -3
-          echo "=== Building ==="
-          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -v -ldflags '-s -w' -o new-api-fixed . 2>&1 | tail -50
-          echo "=== Exit: $? ==="
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags '-s -w' -o new-api-fixed .
+          echo "Build exit code: $?"
+          ls -la new-api-fixed 2>&1 || echo "Binary not found!"
 
       - name: Package
-        if: success()
         run: |
+          ls -la new-api-fixed 2>&1
           tar -czvf new-api-package.tar.gz new-api-fixed
+          ls -la new-api-package.tar.gz
 
       - name: Upload artifact
-        if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: new-api-package
+          name: new-api-binary
           path: new-api-package.tar.gz
           retention-days: 1
