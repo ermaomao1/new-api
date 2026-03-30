@@ -8,7 +8,14 @@ import (
 
 func CORS() gin.HandlerFunc {
 	config := cors.DefaultConfig()
-	config.AllowAllOrigins = true
+	// SECURITY FIX: AllowAllOrigins=false prevents CSRF attacks
+	config.AllowAllOrigins = false
+	config.AllowOrigins = []string{
+		"https://tokene.top",
+		"https://www.tokene.top",
+		"http://localhost:3000",
+		"http://127.0.0.1:3000",
+	}
 	config.AllowCredentials = true
 	config.AllowMethods = []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}
 	config.AllowHeaders = []string{"*"}

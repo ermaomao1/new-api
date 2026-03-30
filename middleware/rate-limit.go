@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/QuantumNous/new-api/common"
@@ -18,10 +19,27 @@ var defNext = func(c *gin.Context) {
 	c.Next()
 }
 
+// getRealClientIP returns the real client IP for rate limiting.
+// SECURITY FIX: Use c.RemoteAddr() to get the actual TCP peer address,
+// which cannot be spoofed via X-Forwarded-For headers.
+// Only use ClientIP() if we explicitly trust a proxy.
+func getRealClientIP(c *gin.Context) string {
+	remoteAddr := c.RemoteAddr()
+	if remoteAddr == "" {
+		return c.ClientIP()
+	}
+	// Strip port from IPv4: "1.2.3.4:12345" -> "1.2.3.4"
+	ip := remoteAddr
+	if colonIdx := strings.LastIndex(ip, ":"); colonIdx > 0 {
+		ip = ip[:colonIdx]
+	}
+	return ip
+}
+
 func redisRateLimiter(c *gin.Context, maxRequestNum int, duration int64, mark string) {
 	ctx := context.Background()
 	rdb := common.RDB
-	key := "rateLimit:" + mark + c.ClientIP()
+	key := "rateLimit:" + mark + getRealClientIP(c)
 	listLength, err := rdb.LLen(ctx, key).Result()
 	if err != nil {
 		fmt.Println(err.Error())
@@ -65,7 +83,7 @@ func redisRateLimiter(c *gin.Context, maxRequestNum int, duration int64, mark st
 }
 
 func memoryRateLimiter(c *gin.Context, maxRequestNum int, duration int64, mark string) {
-	key := mark + c.ClientIP()
+	key := mark + getRealClientIP(c)
 	if !inMemoryRateLimiter.Request(key, maxRequestNum, duration) {
 		c.Status(http.StatusTooManyRequests)
 		c.Abort()

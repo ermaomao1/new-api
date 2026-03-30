@@ -153,6 +153,7 @@ func main() {
 
 	// Initialize HTTP server
 	server := gin.New()
+	server.SetTrustedProxies([]string{"loopback"})
 	server.Use(gin.CustomRecovery(func(c *gin.Context, err any) {
 		common.SysLog(fmt.Sprintf("panic detected: %v", err))
 		c.JSON(http.StatusInternalServerError, gin.H{
