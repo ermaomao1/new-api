@@ -6,6 +6,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -28,20 +29,25 @@ jobs:
           cd web
           bun install
           bun run build
-          echo "Frontend built successfully"
-          ls -la dist/ | head -5
+
+      - name: Download Go modules
+        run: |
+          go mod download
+          echo "Modules downloaded"
 
       - name: Build Go binary
         run: |
-          echo "Starting Go build..."
-          echo "web/dist exists: $(test -d web/dist && echo yes || echo no)"
-          CGO_ENABLED=0 go build -ldflags '-s -w' -o new-api-fixed . 2>&1
-          echo "Go build exit code: $?"
+          echo "=== Build Info ==="
+          pwd
+          ls -la web/dist/ | head -3
+          echo "=== Building ==="
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -v -ldflags '-s -w' -o new-api-fixed . 2>&1 | tail -50
+          echo "=== Exit: $? ==="
 
-      - name: Package binary and dockerfile
+      - name: Package
         if: success()
         run: |
-          tar -czvf new-api-package.tar.gz new-api-fixed Dockerfile
+          tar -czvf new-api-package.tar.gz new-api-fixed
 
       - name: Upload artifact
         if: success()
